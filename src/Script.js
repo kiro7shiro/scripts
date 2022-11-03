@@ -5,13 +5,10 @@
 class Script {
 
     constructor(manager, data) {
-
         Object.assign(this, data)
-
         this.events = {}
         this.manager = manager
         this.manager.reroute(this)
-
     }
 
     async emitEvent(event, data) {

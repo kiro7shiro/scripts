@@ -7,7 +7,7 @@
     "test": "mocha"
   },
   "keywords": [],
-  "author": "",
+  "author": "kiro7shiro",
   "license": "ISC",
   "dependencies": {
     "pm2": "^5.2.0"
