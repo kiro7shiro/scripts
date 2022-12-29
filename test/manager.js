@@ -1,90 +1,83 @@
 const assert = require('assert')
-const scripts = require('../index.js')
+const { Manager } = require('../index.js')
 
-const manager = new scripts.Manager
+const manager = new Manager()
 
 describe('Manager', function () {
+    
+    const logFile = './test/test_log.txt'
+
+    it('connect', async function () {
+        const connected = await manager.connect()
+        assert.equal(connected, true)
+        const disconnected = manager.disconnect()
+        assert.equal(disconnected, true)
+    })
 
     it('events', async function () {
-
         const test = await new Promise(async function (resolve, reject) {
-
             try {
-
                 let callbacks = 0
                 const script = await manager.start({
                     script: './test/scripts/test.js',
-                    name: 'test'
+                    name: 'test',
+                    log_file: logFile,
                 })
                 const script2 = await manager.start({
                     script: './test/scripts/test2.js',
-                    name: 'test2'
+                    name: 'test2',
+                    log_file: logFile,
                 })
-                script.onEvent('first', async function (data) {
-                    //console.log({ data })
+                script.onEvent('first', function (data) {
                     callbacks++
                 })
                 script.onEvent('last', async function (data) {
-                    //console.log({ data })
                     callbacks++
-                    await manager.delete('test')
+                    await manager.stop('test')
                 })
-                script2.onEvent('first', async function (data) {
-                    //console.log({ data })
+                script2.onEvent('first', function (data) {
                     callbacks++
                 })
                 script2.onEvent('last', async function (data) {
-                    //console.log({ data })
                     callbacks++
-                    await manager.delete('test2')
-                    manager.disconnect()
+                    await manager.terminate()
                     resolve(callbacks)
                 })
-    
+
                 await script.emitEvent('first')
                 await script.emitEvent('last')
                 await script2.emitEvent('first')
                 await script2.emitEvent('last')
-
             } catch (error) {
                 reject(error)
             }
-
         })
-    
-        assert.equal(test, 4)    
 
+        assert.equal(test, 4)
     })
 
     it('load', async function () {
+        const rounds = 30
 
         const test = await new Promise(async function (resolve, reject) {
-            
             try {
-
                 const script = await manager.start({
                     script: './test/scripts/test3.js',
-                    name: 'test3'
+                    name: 'test3',
                 })
                 script.onEvent('load', async function (data) {
-                    //console.log({ data })
-                    if (data.count === 2) {
+                    if (data.count === rounds) {
                         await script.emitEvent('stop')
-                        await manager.delete('test3')
-                        manager.disconnect()
+                        await manager.terminate()
                         resolve(data.count)
                     }
                 })
                 await script.emitEvent('start')
-
             } catch (error) {
                 reject(error)
             }
-
         })
 
-        assert.equal(test, 2)
-        
+        assert.equal(test, rounds)
     })
-
 })
