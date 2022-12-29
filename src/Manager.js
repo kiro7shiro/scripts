@@ -1,3 +1,4 @@
+const { promisify } = require('util')
 const pm2 = require('pm2')
 const { Script } = require('./Script.js')
 
@@ -5,9 +6,18 @@ const { Script } = require('./Script.js')
  * Convenience wrapper for pm2
  */
 class Manager {
+    
+    static connect = promisify(pm2.connect.bind(pm2))
+    static delete = promisify(pm2.delete.bind(pm2))
+    static disconnect = pm2.disconnect.bind(pm2)
+    static list = promisify(pm2.list.bind(pm2))
+    static launchBus = promisify(pm2.launchBus.bind(pm2))
+    static send = promisify(pm2.sendDataToProcessId.bind(pm2))
+    static start = promisify(pm2.start.bind(pm2))
+    static stop = promisify(pm2.stop.bind(pm2))
 
     constructor() {
-        this.bus = undefined
+        this.bus = null
         this.connected = false
         this.handlers = {}
     }
@@ -16,15 +26,14 @@ class Manager {
      * Connects to local pm2 instance or spawns a new one.
      * @returns {Error|Boolean}
      */
-    connect() {
-        const self = this
-        return new Promise(function (resolve, reject) {
-            pm2.connect(function (error) {
-                if (error) reject(error)
-                self.connected = true
-                resolve(true)
-            })
-        })
+    async connect() {
+        try {
+            await Manager.connect()
+            this.connected = true
+            return true
+        } catch (error) {
+            return error
+        }
     }
 
     /**
@@ -32,61 +41,66 @@ class Manager {
      * @param {String} name of the script to remove from pm2 list
      * @returns {Error|Boolean}
      */
-    delete(name) {
-        return new Promise(function (resolve, reject) {
-            pm2.delete(name, function (error) {
-                if (error) reject(error)
-                resolve(true)
-            })
-        })
+    async delete(name) {
+        try {
+            await Manager.delete(name)
+            return true
+        } catch (error) {
+            return error
+        }
     }
 
     /**
      * Disconnect from pm2.
      */
     disconnect() {
-        this.bus = undefined
-        this.connected = false
-        pm2.disconnect()
+        try {
+            this.bus = null
+            this.connected = false
+            Manager.disconnect()
+            return true
+        } catch (error) {
+            return error
+        }
     }
 
     /**
      * Get a list of processes managed by pm2.
-     * @param {Object} [options] 
+     * @param {Object} [options]
      * @param {String} [options.name] get a specific script
      * @returns {Array|Script}
      */
-    list({ name = undefined } = {}) {
-        return new Promise(function (resolve, reject) {
-            pm2.list(function (error, list) {
-                if (error) reject(error)
-                if (!name) resolve(list)
-                const [script] = list.filter(function (s) {
-                    return s.name === name
-                })
-                if (script) resolve(script)
-                resolve(false)
+    async list({ name = null } = {}) {
+        try {
+            const list = await Manager.list()
+            if (!name) return list
+            const [script] = list.filter(function (s) {
+                return s.name === name
             })
-        })
+            if (script) return script
+            return false
+        } catch (error) {
+            return error
+        }
     }
 
     /**
      * Launch an bus to communicate with scripts.
      * @returns {Error|Bus}
      */
-    launchBus() {
-        const self = this
-        return new Promise(function (resolve, reject) {
-            pm2.launchBus(function (error, bus) {
-                if (error) reject(error)
-                self.bus = bus
-                self.bus.on('process:msg', function (packet) {
-                    const { name } = packet.process
-                    if (self.handlers[name]) self.handlers[name](packet)
-                })
-                resolve(bus)
+    async launchBus() {
+        try {
+            const self = this
+            const bus = await Manager.launchBus()
+            bus.on('process:msg', function (packet) {
+                const { name } = packet.process
+                if (self.handlers[name]) self.handlers[name](packet)
             })
-        })
+            self.bus = bus
+            return bus
+        } catch (error) {
+            return error
+        }
     }
 
     /**
@@ -99,71 +113,64 @@ class Manager {
 
     /**
      * Send a set of data as object to a specific script.
-     * @param {Object} packet 
+     * @param {Object} packet
      * @returns {Error|Object|Boolean}
      */
     async send(packet) {
-        if (!packet.id) throw new Error('Id must be set.')
-        if (!packet.data) throw new Error('Data must be given.')
-        if (!packet.topic) packet.topic = true
-        packet.type = 'process:msg'
-        if (typeof packet.id === 'string') {
-            const proc = await this.list({ name: packet.id })
-            if (proc) {
-                packet.id = proc.pm_id
-            } else {
-                throw new Error(`Cannot find script named: ${packet.id}`)
+        try {
+            if (!packet.id) return new Error('Id must be set.')
+            if (!packet.data) return new Error('Data must be given.')
+            if (!packet.topic) packet.topic = true
+            packet.type = 'process:msg'
+            if (typeof packet.id === 'string') {
+                const proc = await this.list({ name: packet.id })
+                if (proc) {
+                    packet.id = proc.pm_id
+                } else {
+                    return new Error(`Cannot find script named: ${packet.id}`)
+                }
             }
+            const response = await Manager.send(packet)
+            return response
+        } catch (error) {
+            return error
         }
-        return new Promise(function (resolve, reject) {
-            pm2.sendDataToProcessId(packet, function (error, response) {
-                if (error) reject(error)
-                if (response && response.success) resolve(response)
-                resolve(false)
-            })
-        })
     }
 
     /**
      * Start a script that will be managed by pm2.
-     * @param {Object} data 
+     * @param {Object} data
      * @returns {Error|Script}
      */
     async start(data) {
-        if (!this.connected) await this.connect()
-        if (!this.bus) await this.launchBus()
-        const script = new Script(this, data)
-        return new Promise(function (resolve, reject) {
-            pm2.start(script, function (error) {
-                if (error) reject(error)
-                resolve(script)
-            })
-        })
+        try {
+            if (!this.connected) await this.connect()
+            if (!this.bus) await this.launchBus()
+            const script = new Script(this, data)
+            await Manager.start(script)
+            return script
+        } catch (error) {
+            return error
+        }
     }
 
     /**
-     * 
+     * Stop a running script and remove it from pm2 list.
      * @param {String} name of the script to be stopped
      * @param {Object} options
      * @param {Boolean} options.remove remove the script from pm2 list, too
      * @returns {Error|Boolean}
      */
     async stop(name, { remove = true } = {}) {
-        const self = this
-        return new Promise(function (resolve, reject) {
-            pm2.stop(name, async function (error) {
-                if (error) reject(error)
-                if (remove) {
-                    try {
-                        const result = await self.delete(name)
-                        resolve(result)
-                    } catch (error) {
-                        reject(error)
-                    }
-                }
-                resolve(true)
-            })
-        })
+        try {
+            const response = await this.send({ id: name, data: { event: 'sigtest' } })
+            console.log({ response })
+            await Manager.stop(name)
+            if (remove) await this.delete(name)
+            return true
+        } catch (error) {
+            return error
+        }
     }
 
     /**
@@ -184,4 +191,6 @@ class Manager {
     }
 }
 
-module.exports = { Manager }
+const manager = new Manager()
+
+module.exports = { manager }
