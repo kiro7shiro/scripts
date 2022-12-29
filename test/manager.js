@@ -1,22 +1,29 @@
 const assert = require('assert')
+const fs = require('fs').promises
 const { manager } = require('../index.js')
 
 describe('Manager', function () {
-    
     const logFile = './test/test_log.txt'
+
+    before(async function () {
+        // clear the log file
+        await fs.writeFile(logFile, '')
+    })
 
     it('connect', async function () {
         const connected = await manager.connect()
         assert.equal(connected, true)
+        assert.equal(manager.connected, true)
         const disconnected = manager.disconnect()
         assert.equal(disconnected, true)
+        assert.equal(manager.connected, false)
     })
 
     it('events', async function () {
         const test = await new Promise(async function (resolve, reject) {
             try {
                 let callbacks = 0
-                const script = await manager.start({
+                const script1 = await manager.start({
                     script: './test/scripts/test.js',
                     name: 'test',
                     log_file: logFile,
@@ -26,37 +33,34 @@ describe('Manager', function () {
                     name: 'test2',
                     log_file: logFile,
                 })
-                script.onEvent('first', function (data) {
+                script1.onEvent('first', function () {
                     callbacks++
                 })
-                script.onEvent('last', async function (data) {
+                script1.onEvent('last', async function () {
                     callbacks++
                     await manager.stop('test')
                 })
-                script2.onEvent('first', function (data) {
+                script2.onEvent('first', function () {
                     callbacks++
                 })
-                script2.onEvent('last', async function (data) {
+                script2.onEvent('last', async function () {
                     callbacks++
                     await manager.terminate()
                     resolve(callbacks)
                 })
-
-                await script.emitEvent('first')
-                await script.emitEvent('last')
+                await script1.emitEvent('first')
+                await script1.emitEvent('last')
                 await script2.emitEvent('first')
                 await script2.emitEvent('last')
             } catch (error) {
                 reject(error)
             }
         })
-
         assert.equal(test, 4)
     })
 
-    it('load', async function () {
+    it('loop', async function () {
         const rounds = 30
-
         const test = await new Promise(async function (resolve, reject) {
             try {
                 const script = await manager.start({
@@ -75,7 +79,6 @@ describe('Manager', function () {
                 reject(error)
             }
         })
-
         assert.equal(test, rounds)
     })
 })

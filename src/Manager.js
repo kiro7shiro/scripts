@@ -6,7 +6,6 @@ const { Script } = require('./Script.js')
  * Convenience wrapper for pm2
  */
 class Manager {
-    
     static connect = promisify(pm2.connect.bind(pm2))
     static delete = promisify(pm2.delete.bind(pm2))
     static disconnect = pm2.disconnect.bind(pm2)
@@ -163,8 +162,6 @@ class Manager {
      */
     async stop(name, { remove = true } = {}) {
         try {
-            const response = await this.send({ id: name, data: { event: 'sigtest' } })
-            console.log({ response })
             await Manager.stop(name)
             if (remove) await this.delete(name)
             return true

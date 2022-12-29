@@ -1,0 +1,32 @@
+{
+  test: '/home/kiro/Development/scripts/test/scripts/test.js',
+  data: { event: 'first' }
+}
+{
+  test: '/home/kiro/Development/scripts/test/scripts/test.js',
+  data: { event: 'last' }
+}
+{
+  test: '/home/kiro/Development/scripts/test/scripts/test.js',
+  data: { event: 'sigtest' }
+}
+{
+  test: '/home/kiro/Development/scripts/test/scripts/test2.js',
+  data: { event: 'first' }
+}
+{
+  test: '/home/kiro/Development/scripts/test/scripts/test2.js',
+  data: { event: 'last' }
+}
+{
+  test: '/home/kiro/Development/scripts/test/scripts/test.js',
+  data: 'SIGINT'
+}
+{
+  test: '/home/kiro/Development/scripts/test/scripts/test2.js',
+  data: { event: 'sigtest' }
+}
+{
+  test: '/home/kiro/Development/scripts/test/scripts/test2.js',
+  data: 'SIGINT'
+}

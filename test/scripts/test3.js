@@ -12,5 +12,7 @@ process.onEvent('start', function () {
 })
 process.onEvent('stop', function () {
     clearTimeout(handle)
+})
+process.on('SIGINT', function () {
     process.exit(0)
 })
