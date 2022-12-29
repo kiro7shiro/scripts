@@ -1,7 +1,5 @@
 const assert = require('assert')
-const { Manager } = require('../index.js')
-
-const manager = new Manager()
+const { manager } = require('../index.js')
 
 describe('Manager', function () {
     

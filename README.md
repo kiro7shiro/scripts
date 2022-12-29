@@ -21,20 +21,24 @@ Then create a main file and communicate with your script.
 
 ### main.js
 
-    const scripts = require('./index.js')
-    const manager = new scripts.Manager
+    const { manager } = require('./index.js')
 
     async function main() {
-        const script = await manager.start({
-            script: './test/scripts/test.js',
-            name: 'test'
-        })
-        script.onEvent('event', function (data) {
-            console.log({ data })
-        })
-        await script.emitEvent('event')
-        await manager.delete('test')
-        manager.disconnect()
+        try {
+            const script = await manager.start({
+                script: './test/scripts/test.js',
+                name: 'test'
+            })
+            script.onEvent('event', function (data) {
+                console.log({ data })
+            })
+            const response = await script.emitEvent('event')
+            console.log({ response })
+        } catch (error) {
+            return error
+        } finally {
+            await manager.terminate()
+        }
     }
 
     main()
