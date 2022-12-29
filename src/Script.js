@@ -3,7 +3,6 @@
  * to the underlying node process.
  */
 class Script {
-
     constructor(manager, data) {
         Object.assign(this, data)
         this.events = {}
@@ -21,7 +20,9 @@ class Script {
     handle(packet) {
         const { event } = packet.data
         if (this.events[event]) {
-            this.events[event].forEach(handler => handler(packet.data))
+            this.events[event].forEach(function (handler) {
+                return handler(packet.data)
+            })
         }
     }
 
